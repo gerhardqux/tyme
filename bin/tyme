@@ -58,7 +58,8 @@ my $targetdir = $cfg->{project}."/".UnixDate($cfg->{date},"%Y-%m");
 # users/gm/w51
 my $userdir = "users/".$cfg->{username}."/w".UnixDate($cfg->{date},"%W");;
 
-mkpath($targetdir, $userdir);
+mkpath($targetdir);
+mkpath($userdir);
 die "$targetdir is not there or is not a directory\n" unless -d $targetdir;
 die "$userdir is not there or is not a directory\n" unless -d $userdir;
 
