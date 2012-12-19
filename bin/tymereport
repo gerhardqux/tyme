@@ -1,0 +1,53 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use File::Basename;
+
+my $total = 0;
+
+printf("%-10s %-40s %-19s %-5s\n", "Date", "Description", "Project", "Time");
+print "-" x 78 . "\n";
+while(<STDIN>) {
+	chomp;
+	my $fname=basename($_);
+	next unless -f;
+
+	my $prj = dirname( (-l) ? readlink : $_ );
+	$prj =~ s,/?prj/,,g;
+	$prj =~ s,\.\./?,,g;
+	$prj =~ s,/?\d{4}-\d{2}/?,,g;
+
+	if ($fname =~ /(.+)T(.+)_(\d+)_(.+)/) {
+		my ($date,$time,$spent,$username) = ($1,$2,$3,$4);
+		$total += $spent;
+		open(my $fh, "<", $_)
+			or die("Opening $_ failed: $!");
+		my $msg = <$fh>;
+		close $fh;
+		chomp($msg);
+
+		$msg = "($username) $msg" unless -l;
+
+		printf("%10s %-40s %-19s %5s\n", $date, $msg, $prj, nicetime($spent));
+	}
+}
+
+print "-" x 78 . "\n";
+printf ("Total: %71s\n", nicetime($total));
+
+sub nicetime
+{
+	return sprintf("%2dh%2dm", $_[0] / 60, $_[0] % 60);
+}
+
+=cut
+
+ $ find users/gm/w51/ | ./tymereport
+ 2012-12-17 optimized the frobnizer                  customer1     4h 0m
+ 2012-12-17 something more                           customer2     4h 0m
+ ------------------------------------------------------------------------------
+ Total:                                                                   8h 0m
+
+=end
+

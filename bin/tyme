@@ -1,0 +1,169 @@
+#!/usr/bin/perl
+#
+# tyme - Book your hours from the command line
+#
+
+use warnings;
+use strict;
+use Data::Dumper;
+use Date::Manip qw(ParseDate ParseDateDelta DateCalc UnixDate);
+use Getopt::Long 2.33;
+use Pod::Usage;
+use Config::Tiny;
+use File::Path qw(mkpath);
+
+my $cfg = Config::Tiny->read( $ENV{HOME}.'/.tyme.conf' )
+	or warn "Cfg not found: ".$ENV{HOME}.'/.tyme.conf';
+
+$cfg = $cfg->{_};
+$cfg->{verbose}  ||= 0;
+$cfg->{test}     ||= 0;
+$cfg->{force}    ||= 0;
+$cfg->{project}  ||= 0;
+$cfg->{date}     ||= 0;
+$cfg->{username} ||= $ENV{USER};
+$cfg->{msg}      ||= 'something';
+$cfg->{spent}    ||= 0;
+
+Getopt::Long::Configure("bundling");
+GetOptions(
+  'v|verbose+'   => \$cfg->{verbose},
+  't|test'       => \$cfg->{test},
+  'f|force'      => \$cfg->{force},
+  'p|project=s'  => \$cfg->{project},
+  'd|date=s'     => \$cfg->{date},
+  'u|username=s' => \$cfg->{username},
+  'm|msg=s'      => \$cfg->{msg},
+  '<>'           => sub { $cfg->{spent} += ParseDelta( $_[0] )},
+) or pod2usage( -verbose => 2, -noperldoc => 1 );
+
+
+# If a date is specified, it should be correct
+if (!$cfg->{date} && !ParseDate($cfg->{date})) {
+	die "Cannot parse date: ".$cfg->{date}."\n";
+}
+
+# If no date is specified, now() minus timer_spent
+unless ( $cfg->{date} ) {
+	$cfg->{date} = DateCalc(
+		ParseDate("today"),
+		ParseDateDelta("-".$cfg->{spent}."mn")
+	);
+}
+
+
+# prj/customer/proj1/subproj1/2012-12
+my $targetdir = $cfg->{project}."/".UnixDate($cfg->{date},"%Y-%m");
+
+# users/gm/w51
+my $userdir = "users/".$cfg->{username}."/w".UnixDate($cfg->{date},"%W");;
+
+mkpath($targetdir, $userdir);
+die "$targetdir is not there or is not a directory\n" unless -d $targetdir;
+die "$userdir is not there or is not a directory\n" unless -d $userdir;
+
+my $targetfile = 
+	UnixDate($cfg->{date}, "%Y-%m-%dT%H:%M")
+	."_".$cfg->{spent}
+	."_".$cfg->{username};
+
+# test-mode doesn't actually change anything
+unless ($cfg->{test}) {
+	open(my $fh, ">", "$targetdir/$targetfile")
+		or die("Cannot open: $!");
+	print $fh $cfg->{msg}."\n";
+	close($fh);
+	symlink "../../../$targetdir/$targetfile", "$userdir/$targetfile"
+		or die ("Failed to create symlink: $!");
+}
+else {
+	print "echo '".$cfg->{msg}."' > $targetdir/$targetfile\n";
+	print "ln -s ../../../$targetdir/$targetfile $userdir/$targetfile\n";
+}
+
+
+# In: "1d6h2m"
+# Out: minutes
+sub ParseDelta
+{
+	my $delta = shift;
+	my $min = 0;
+
+	if ($delta =~ /(\d+)[w]/)  { $min += $1 * 60 * 40; }
+	if ($delta =~ /(\d+)[d]/)  { $min += $1 * 60 * 8; }
+	if ($delta =~ /(\d+)[hu]/) { $min += $1 * 60; }
+	if ($delta =~ /(\d+)[m]/)  { $min += $1; }
+
+	return $min;
+}
+
+
+__END__
+
+=head1 NAME
+
+tyme - Book your hours from the command line
+
+=head1 SYNOPSIS
+
+ tyme [<options>] [<time spent>]
+
+ tyme [-p <project>] [-m <msg>] [-d <date>] 1h45m
+
+ # book 40 hours, starting last monday 9:00
+ tyme -p myproject/subproject -m "Optimize the frobnizer" -d "last monday 9:00" 1w
+
+ # book 8 hours, starting yesterday morning
+ tyme -p myproject/subproject -m "Optimize the frobnizer" -d "yesterday 9:00" 1d
+
+ # How many hours (minutes) did I make in december?
+ find users/gm/ | grep 2012-12 | cut -d_ -f2 | awk '{sum += $1} END {print sum/60}'
+
+ # How many hours are made for customer in december?
+ find prj/customer | grep 2012-12 | tymereport
+ find prj/customer | grep 2012-12 | cut -d_ -f2  | awk '{sum += $1} END {print sum/60}'
+
+=head1 DESCRIPTION
+
+Book your hours from the commandline.
+
+Tyme solves the difficult task of making it attractive for me to book my hours.
+
+=head1 OPTIONS
+
+=over 4
+
+=item C<-p> or C<--project> <project>
+
+The project to book the hours on.
+
+=item C<-m> or C<--message> <msg>
+
+A description of the work done.
+
+=item C<-d> or C<--date> <date>
+
+The date when the work was done. Defaults to now() - hours.
+
+=item C<-t> or C<--test>
+
+Don't actually do anything.
+
+=back
+
+=head1 ABOUT
+
+Tyme specializes in getting information out of you, and does very little
+other things. Tyme is not a tool for project management, but intends to
+connect to project management tools. Tyme is not an invoicing system, but
+intends to connect to your existing invoicing system.
+
+=head1 TODO
+
+Make tyme context-aware, look at git history, imap history, bash history.
+
+=head1 SEEALSO
+
+tymereport
+
+=cut

@@ -1,0 +1,66 @@
+=head1 SYNOPSIS
+
+ # Take latest 2 commit msgs from the current project and pre-calculate the
+ # difference between todays cmdline-activity and commit-times.
+ tyme -l 2 
+
+=head1 DESCRIPTION
+
+The default projectcode is
+derived from the directory context. Enter a description with your
+default $EDITOR, defaulting to the last commit-msg.
+
+Tyme is very context aware.  It looks around for recent commit history,
+recently closed bugs and commandline history.  Context is not necessary,
+but tyme uses it to give hints and suggestions.
+
+=head1 OPTIONS
+
+=over 4
+
+=item C<-p> or C<--project> <project>
+
+The project to book the hours on.
+
+=item C<-m> or C<--message> <msg>
+
+Defaults to the last commit-msg.
+
+=item C<-d> or C<--date> <date>
+
+rounded down to the hour.
+
+=item C<-l> or C<--log> <nrOfCommitMsgs>
+
+Take the last <nrOfCommitMsgs> as the default work description.
+
+=back
+
+=head1 WORKING CONTEXT
+
+=head2 BASH
+
+To configure bash to record timestamps, set the following environment variable:
+
+C<export HISTTIMEFORMAT="%F %T ">
+
+=head2 GIT
+
+Git works out of the box.  Work descriptions and hours are automatically taken
+from the git-log.
+
+=head2 IMAP
+
+Someday tyme might look in the Sent folder in a configured IMAP-account.
+The sent date can be compared to the latest received date of the message
+referenced in the "In-Reply-To"-header.
+
+=head2 REDMINE
+
+Book what was planned for - and executed by you.
+
+=head1 SEE ALSO
+
+L<git>, L<sd>
+
+=cut
