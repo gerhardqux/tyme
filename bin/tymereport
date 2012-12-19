@@ -3,6 +3,7 @@
 use strict;
 use warnings;
 use File::Basename;
+use File::Slurp;
 
 my $total = 0;
 
@@ -20,14 +21,11 @@ while(<STDIN>) {
 
 	if ($fname =~ /(.+)T(.+)_(\d+)_(.+)/) {
 		my ($date,$time,$spent,$username) = ($1,$2,$3,$4);
-		$total += $spent;
-		open(my $fh, "<", $_)
-			or die("Opening $_ failed: $!");
-		my $msg = <$fh>;
-		close $fh;
+		my $msg = read_file($_);
 		chomp($msg);
-
 		$msg = "($username) $msg" unless -l;
+
+		$total += $spent;
 
 		printf("%10s %-40s %-19s %5s\n", $date, $msg, $prj, nicetime($spent));
 	}
