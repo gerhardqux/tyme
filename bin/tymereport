@@ -41,7 +41,7 @@ sub nicetime
 
 =cut
 
- $ find users/gm/w51/ | ./tymereport
+ $ find users/gm/2012-w51/ | ./tymereport
  2012-12-17 optimized the frobnizer                  customer1     4h 0m
  2012-12-17 something more                           customer2     4h 0m
  ------------------------------------------------------------------------------

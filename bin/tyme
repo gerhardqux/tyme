@@ -60,7 +60,7 @@ unless ( $cfg->{date} ) {
 my $targetdir = $cfg->{project}."/".UnixDate($cfg->{date},"%Y-%m");
 
 # users/gm/w51
-my $userdir = "users/".$cfg->{username}."/w".UnixDate($cfg->{date},"%W");;
+my $userdir = "users/".$cfg->{username}."/".UnixDate($cfg->{date},"%Y-w%W");;
 
 mkpath($targetdir);
 mkpath($userdir);
@@ -167,15 +167,22 @@ Tyme solves the difficult task of making it attractive for me to book my hours.
 
 =item C<-p> or C<--project> <project>
 
-The project to book the hours on.
+The project to book the hours on. You are free to choose a directory structure.
+E.g. prj/client1/proj2/subproj1.
 
 =item C<-m> or C<--message> <msg>
 
 A description of the work done.
+E.g. -m "Optimized the frobnizer"
 
 =item C<-d> or C<--date> <date>
 
 The date when the work was done. Defaults to now() - hours.
+Can be in various formats. E.g. "2012-12-31T23:59:59" or "yesterday 9:00"
+
+=item C<-f> or C<--force>
+
+Overwrite already existing files.
 
 =item C<-t> or C<--test>
 
