@@ -11,16 +11,20 @@ use Getopt::Long 2.33;
 use Pod::Usage;
 use Config::Tiny;
 use File::Path qw(mkpath);
+use File::Slurp;
+use File::Basename;
+use Cwd qw( abs_path );
+use vars qw( $cfg );
 
-my $cfg = Config::Tiny->read( $ENV{HOME}.'/.tyme.conf' )
+$cfg = Config::Tiny->read( $ENV{HOME}.'/.tyme.conf' )
 	or warn "Cfg not found: ".$ENV{HOME}.'/.tyme.conf';
 
 $cfg = $cfg->{_};
 $cfg->{verbose}  ||= 0;
 $cfg->{test}     ||= 0;
 $cfg->{force}    ||= 0;
-$cfg->{project}  ||= 0;
-$cfg->{date}     ||= 0;
+$cfg->{project}  ||= 'prj/unknown';
+$cfg->{date}     ||= undef;
 $cfg->{username} ||= $ENV{USER};
 $cfg->{msg}      ||= 'something';
 $cfg->{spent}    ||= 0;
@@ -39,7 +43,7 @@ GetOptions(
 
 
 # If a date is specified, it should be correct
-if (!$cfg->{date} && !ParseDate($cfg->{date})) {
+if ($cfg->{date} && !ParseDate($cfg->{date})) {
 	die "Cannot parse date: ".$cfg->{date}."\n";
 }
 
@@ -61,27 +65,54 @@ my $userdir = "users/".$cfg->{username}."/w".UnixDate($cfg->{date},"%W");;
 mkpath($targetdir);
 mkpath($userdir);
 die "$targetdir is not there or is not a directory\n" unless -d $targetdir;
-die "$userdir is not there or is not a directory\n" unless -d $userdir;
+die   "$userdir is not there or is not a directory\n" unless -d $userdir;
 
 my $targetfile = 
 	UnixDate($cfg->{date}, "%Y-%m-%dT%H:%M")
 	."_".$cfg->{spent}
 	."_".$cfg->{username};
 
+if (-e "$userdir/$targetfile") {
+	die  "E: $targetfile already exists! Specify -f to overwrite\n"
+		unless $cfg->{force};
+	warn "W: $targetfile already exists! Removing previous one\n";
+	chase_symlink_rm("$userdir/$targetfile");
+}
+
 # test-mode doesn't actually change anything
 unless ($cfg->{test}) {
-	open(my $fh, ">", "$targetdir/$targetfile")
-		or die("Cannot open: $!");
-	print $fh $cfg->{msg}."\n";
-	close($fh);
+	write_file("$targetdir/$targetfile", $cfg->{msg})
+		or die("$!\n");
+
 	symlink "../../../$targetdir/$targetfile", "$userdir/$targetfile"
-		or die ("Failed to create symlink: $!");
+		or warn "$!\n";
 }
 else {
 	print "echo '".$cfg->{msg}."' > $targetdir/$targetfile\n";
 	print "ln -s ../../../$targetdir/$targetfile $userdir/$targetfile\n";
 }
 
+# Remove the target of a symlink, and all links in between
+sub chase_symlink_rm
+{
+	my $fname = shift;
+
+	chase_symlink_rm(
+		abs_path(
+			dirname($fname).'/'.(readlink($fname))
+		)
+	) if -l $fname;
+
+	warn "W: Removing $fname\n";
+
+	if ($cfg->{test}) {
+		print "rm $fname\n";
+	}
+	else {
+		unlink $fname
+			or warn "Failed to remove $fname: $!\n";
+	}
+}
 
 # In: "1d6h2m"
 # Out: minutes
